@@ -1,0 +1,479 @@
+variable "cvo_image_name" {
+default = "yanbeiha2"
+}
+ 
+variable "mediator_image_name" {
+default = "eaagaard-rhel-8u5-x86-64-kvm"
+}
+ 
+/* A prefix for instance name */
+variable "user_id" {
+default = "cvo-ha"
+}
+ 
+variable "vm1_zone" {
+default = "us-east-1"
+}
+ 
+variable "vm2_zone" {
+default = "us-east-2"
+}
+ 
+variable "mediator_zone" {
+default = "us-east-3"
+}
+ 
+variable "cvo_instance_profile" {
+default = "bx2-32x128"
+}
+ 
+variable "mediator_instance_profile" {
+default = "cx2-2x4"
+}
+ 
+variable "volume_profile" {
+default = "general-purpose"
+}
+ 
+variable "service_vpc" {
+default = "netapp-hcl-openlab-vpc"
+}
+ 
+variable "customer_vpc" {
+default = "netapp-hcl-openlab-vpc"
+}
+ 
+variable "service_vpc_internal_security_group" {
+default = "props-earthling-percolate-sage"
+}
+ 
+variable "service_vpc_external_security_group" {
+default = "props-earthling-percolate-sage"
+}
+ 
+variable "customer_vpc_security_group" {
+default = "props-earthling-percolate-sage"
+}
+ 
+variable "service_vpc_vm1_subnet" {
+default = "netapp-hcl-subnet1"
+}
+ 
+variable "service_vpc_vm2_subnet" {
+default = "netapp-hcl-subnet2"
+}
+ 
+variable "service_vpc_mediator_subnet" {
+default = "netapp-hcl-subnet3"
+}
+ 
+variable "customer_vpc_vm1_subnet" {
+default = "netapp-hcl-subnet1"
+}
+ 
+variable "customer_vpc_vm2_subnet" {
+default = "netapp-hcl-subnet2"
+}
+ 
+variable "data_volumes" {
+type = list(string)
+default = []
+}
+ 
+variable "tags" {
+type = list(string)
+default = []
+}
+ 
+variable "user_bootargs" {
+type = list(string)
+default = []
+}
+ 
+variable "trusted_profile_id" {
+default = ""
+}
+ 
+variable "serial_number" {
+default = "90920140000000000001"
+}
+ 
+/* Data sources already existing in account */
+data "ibm_is_vpc" "service_vpc" {
+name = var.service_vpc
+}
+ 
+data "ibm_is_vpc" "customer_vpc" {
+name = var.customer_vpc
+}
+ 
+data "ibm_is_security_group" "service_vpc_internal_security_group" {
+name = var.service_vpc_internal_security_group
+}
+ 
+data "ibm_is_security_group" "service_vpc_external_security_group" {
+name = var.service_vpc_external_security_group
+}
+ 
+data "ibm_is_security_group" "customer_vpc_security_group" {
+name = var.customer_vpc_security_group
+}
+ 
+data "ibm_is_subnet" "service_vpc_vm1_subnet" {
+name = var.service_vpc_vm1_subnet
+}
+ 
+data "ibm_is_subnet" "service_vpc_vm2_subnet" {
+name = var.service_vpc_vm2_subnet
+}
+ 
+data "ibm_is_subnet" "service_vpc_mediator_subnet" {
+name = var.service_vpc_mediator_subnet
+}
+ 
+data "ibm_is_subnet" "customer_vpc_vm1_subnet" {
+name = var.customer_vpc_vm1_subnet
+}
+ 
+data "ibm_is_subnet" "customer_vpc_vm2_subnet" {
+name = var.customer_vpc_vm2_subnet
+}
+ 
+data "ibm_is_image" "cvo_image" {
+name = var.cvo_image_name
+}
+ 
+data "ibm_is_image" "mediator_image" {
+name = var.mediator_image_name
+}
+ 
+/* Resources to be created */
+resource "random_id" "unique_id" {
+byte_length = 4
+}
+ 
+resource "ibm_is_subnet_reserved_ip" "vm1_ic_ip" {
+name = "vm1icip-${random_id.unique_id.hex}"
+subnet = data.ibm_is_subnet.service_vpc_vm1_subnet.id
+}
+ 
+resource "ibm_is_subnet_reserved_ip" "vm2_ic_ip" {
+name = "vm2icip-${random_id.unique_id.hex}"
+subnet = data.ibm_is_subnet.service_vpc_vm2_subnet.id
+}
+ 
+resource "ibm_is_subnet_reserved_ip" "vm1_iscsi_ip" {
+name = "vm1iscsiip-${random_id.unique_id.hex}"
+subnet = data.ibm_is_subnet.service_vpc_vm1_subnet.id
+}
+ 
+resource "ibm_is_subnet_reserved_ip" "vm2_iscsi_ip" {
+name = "vm2iscsiip-${random_id.unique_id.hex}"
+subnet = data.ibm_is_subnet.service_vpc_vm2_subnet.id
+}
+ 
+resource "ibm_is_subnet_reserved_ip" "mediator_ip" {
+name = "mediatorip-${random_id.unique_id.hex}"
+subnet = data.ibm_is_subnet.service_vpc_mediator_subnet.id
+}
+ 
+resource "ibm_is_volume" "vm1_core_vol" {
+name = "vm1-core-vol-${random_id.unique_id.hex}"
+profile = var.volume_profile
+zone = var.vm1_zone
+capacity = 100
+}
+ 
+resource "ibm_is_volume" "vm2_core_vol" {
+name = "vm2-core-vol-${random_id.unique_id.hex}"
+profile = var.volume_profile
+zone = var.vm2_zone
+capacity = 100
+}
+ 
+resource "ibm_is_volume" "vm1_root_vol" {
+name = "vm1-root-vol-${random_id.unique_id.hex}"
+profile = var.volume_profile
+zone = var.vm1_zone
+capacity = 400
+}
+ 
+resource "ibm_is_volume" "vm2_root_vol" {
+name = "vm2-root-vol-${random_id.unique_id.hex}"
+profile = var.volume_profile
+zone = var.vm2_zone
+capacity = 400
+}
+ 
+resource "ibm_is_volume" "vm1_root_mirror_vol" {
+name = "vm1-root-mirror-vol-${random_id.unique_id.hex}"
+profile = var.volume_profile
+zone = var.vm1_zone
+capacity = 400
+}
+ 
+resource "ibm_is_volume" "vm2_root_mirror_vol" {
+name = "vm2-root-mirror-vol-${random_id.unique_id.hex}"
+profile = var.volume_profile
+zone = var.vm2_zone
+capacity = 400
+}
+ 
+resource "ibm_is_volume" "mediator_data_vol" {
+name = "mediator-data-vol-${random_id.unique_id.hex}"
+profile = var.volume_profile
+zone = var.mediator_zone
+capacity = 10
+}
+ 
+resource "ibm_is_instance" "cvo_vm1" {
+name = "${var.user_id}-${random_id.unique_id.hex}-vm1"
+zone = var.vm1_zone
+vpc = data.ibm_is_vpc.service_vpc.id
+image = data.ibm_is_image.cvo_image.id
+profile = var.cvo_instance_profile
+default_trusted_profile_target = var.trusted_profile_id
+default_trusted_profile_auto_link = true
+metadata_service_enabled = true
+keys = []
+ 
+/* e0a - node mgmt nic */
+primary_network_interface {
+name = "eth0"
+subnet = data.ibm_is_subnet.service_vpc_vm1_subnet.id
+security_groups = [data.ibm_is_security_group.service_vpc_external_security_group.id]
+}
+ 
+/* e0b - intra cluster nic */
+network_interfaces {
+name = "eth1"
+subnet = data.ibm_is_subnet.service_vpc_vm1_subnet.id
+security_groups = [data.ibm_is_security_group.service_vpc_internal_security_group.id]
+}
+ 
+/* e0c - IC/RDMA nic */
+network_interfaces {
+name = "eth2"
+subnet = data.ibm_is_subnet.service_vpc_vm1_subnet.id
+security_groups = [data.ibm_is_security_group.service_vpc_internal_security_group.id]
+primary_ip {
+reserved_ip = ibm_is_subnet_reserved_ip.vm1_ic_ip.reserved_ip
+}
+}
+ 
+/* e0d - iSCSI/RSM nic */
+network_interfaces {
+name = "eth3"
+subnet = data.ibm_is_subnet.service_vpc_vm1_subnet.id
+security_groups = [data.ibm_is_security_group.service_vpc_internal_security_group.id]
+primary_ip {
+reserved_ip = ibm_is_subnet_reserved_ip.vm1_iscsi_ip.reserved_ip
+}
+}
+ 
+/* e0e - customer facing, nfs/iscsi/svm mgmt nic */
+network_interfaces {
+name = "eth4"
+subnet = data.ibm_is_subnet.service_vpc_vm1_subnet.id
+allow_ip_spoofing = true
+security_groups = [data.ibm_is_security_group.service_vpc_external_security_group.id]
+}
+ 
+/* e0f - customer facing, cluster/mo admin, intercluster nic */
+network_interfaces {
+name = "eth5"
+subnet = data.ibm_is_subnet.service_vpc_vm1_subnet.id
+allow_ip_spoofing = true
+security_groups = [data.ibm_is_security_group.service_vpc_external_security_group.id]
+}
+ 
+/* Adding system disks */
+volumes = [ibm_is_volume.vm1_core_vol.id, ibm_is_volume.vm1_root_vol.id, ibm_is_volume.vm1_root_mirror_vol.id]
+ 
+user_data = <<-EOT
+ontap_cloud_platform_serial_number=${var.serial_number}
+user_bootargs=${join(";",var.user_bootargs)}
+deployment_type=non_shared_ha
+iscsi_mediator_ip=${ibm_is_subnet_reserved_ip.mediator_ip.address}
+iscsi_mediator_target=iqn.2012-05.local:mailbox.target.cvo
+core_volume_id=${ibm_is_volume.vm1_core_vol.id}
+iscsi_local_ip=${ibm_is_subnet_reserved_ip.vm1_iscsi_ip.address}
+iscsi_partner_ip=${ibm_is_subnet_reserved_ip.vm2_iscsi_ip.address}
+ic_local_ip=${ibm_is_subnet_reserved_ip.vm1_ic_ip.address}
+ic_partner_ip=${ibm_is_subnet_reserved_ip.vm2_ic_ip.address}
+ic_gateway_ip=${data.ibm_is_subnet.service_vpc_vm1_subnet.ipv4_cidr_block}
+iscsi_gateway=${data.ibm_is_subnet.service_vpc_vm1_subnet.ipv4_cidr_block}
+iscsi_netmask=${cidrnetmask(data.ibm_is_subnet.service_vpc_vm1_subnet.ipv4_cidr_block)}
+ic_local_netmask=${cidrnetmask(data.ibm_is_subnet.service_vpc_vm1_subnet.ipv4_cidr_block)}
+EOT
+}
+ 
+resource "ibm_is_instance" "cvo_vm2" {
+name = "${var.user_id}-${random_id.unique_id.hex}-vm2"
+zone = var.vm2_zone
+vpc = data.ibm_is_vpc.service_vpc.id
+image = data.ibm_is_image.cvo_image.id
+profile = var.cvo_instance_profile
+default_trusted_profile_target = var.trusted_profile_id
+default_trusted_profile_auto_link = true
+metadata_service_enabled = true
+keys = []
+ 
+/* e0a - node mgmt nic */
+primary_network_interface {
+name = "eth0"
+subnet = data.ibm_is_subnet.service_vpc_vm2_subnet.id
+security_groups = [data.ibm_is_security_group.service_vpc_external_security_group.id]
+}
+ 
+/* e0b - intra cluster nic */
+network_interfaces {
+name = "eth1"
+subnet = data.ibm_is_subnet.service_vpc_vm2_subnet.id
+security_groups = [data.ibm_is_security_group.service_vpc_internal_security_group.id]
+}
+ 
+/* e0c - IC/RDMA nic */
+network_interfaces {
+name = "eth2"
+subnet = data.ibm_is_subnet.service_vpc_vm2_subnet.id
+security_groups = [data.ibm_is_security_group.service_vpc_internal_security_group.id]
+primary_ip {
+reserved_ip = ibm_is_subnet_reserved_ip.vm2_ic_ip.reserved_ip
+}
+}
+ 
+/* e0d - iSCSI/RSM nic */
+network_interfaces {
+name = "eth3"
+subnet = data.ibm_is_subnet.service_vpc_vm2_subnet.id
+security_groups = [data.ibm_is_security_group.service_vpc_internal_security_group.id]
+primary_ip {
+reserved_ip = ibm_is_subnet_reserved_ip.vm2_iscsi_ip.reserved_ip
+}
+}
+ 
+/* e0e - customer facing, nfs/iscsi/svm mgmt nic */
+network_interfaces {
+name = "eth4"
+subnet = data.ibm_is_subnet.service_vpc_vm2_subnet.id
+allow_ip_spoofing = true
+security_groups = [data.ibm_is_security_group.service_vpc_external_security_group.id]
+}
+ 
+/* e0f - customer facing, cluster/mo admin, intercluster nic */
+network_interfaces {
+name = "eth5"
+subnet = data.ibm_is_subnet.service_vpc_vm2_subnet.id
+allow_ip_spoofing = true
+security_groups = [data.ibm_is_security_group.service_vpc_external_security_group.id]
+}
+ 
+/* Attach system disks */
+volumes = [ibm_is_volume.vm2_core_vol.id, ibm_is_volume.vm2_root_vol.id, ibm_is_volume.vm2_root_mirror_vol.id]
+ 
+user_data = <<-EOT
+ontap_cloud_platform_serial_number=${var.serial_number}
+user_bootargs=${join(";",var.user_bootargs)}
+deployment_type=non_shared_ha
+iscsi_mediator_ip=${ibm_is_subnet_reserved_ip.mediator_ip.address}
+iscsi_mediator_target=iqn.2012-05.local:mailbox.target.cvo
+core_volume_id=${ibm_is_volume.vm1_core_vol.id}
+iscsi_local_ip=${ibm_is_subnet_reserved_ip.vm2_iscsi_ip.address}
+iscsi_partner_ip=${ibm_is_subnet_reserved_ip.vm1_iscsi_ip.address}
+ic_local_ip=${ibm_is_subnet_reserved_ip.vm2_ic_ip.address}
+ic_partner_ip=${ibm_is_subnet_reserved_ip.vm1_ic_ip.address}
+ic_gateway_ip=${data.ibm_is_subnet.service_vpc_vm2_subnet.ipv4_cidr_block}
+iscsi_gateway=${data.ibm_is_subnet.service_vpc_vm2_subnet.ipv4_cidr_block}
+iscsi_netmask=${cidrnetmask(data.ibm_is_subnet.service_vpc_vm2_subnet.ipv4_cidr_block)}
+ic_local_netmask=${cidrnetmask(data.ibm_is_subnet.service_vpc_vm2_subnet.ipv4_cidr_block)}
+EOT
+}
+ 
+/* mediator vm. TODO check if vm1 and vm2 should 'depend_on' mediator vm */
+resource ibm_is_instance "mediator_vm" {
+name = "${var.user_id}-${random_id.unique_id.hex}-mediator"
+image = data.ibm_is_image.mediator_image.id
+profile = var.mediator_instance_profile
+metadata_service_enabled = false
+vpc = data.ibm_is_vpc.service_vpc.id
+zone = var.mediator_zone
+default_trusted_profile_target = var.trusted_profile_id
+keys = []
+ 
+primary_network_interface {
+name = "eth0"
+subnet = data.ibm_is_subnet.service_vpc_mediator_subnet.id
+security_groups = [data.ibm_is_security_group.service_vpc_internal_security_group.id]
+primary_ip {
+reserved_ip = ibm_is_subnet_reserved_ip.mediator_ip.reserved_ip
+}
+}
+ 
+volumes = [ibm_is_volume.mediator_data_vol.id]
+}
+ 
+resource "ibm_is_volume" "vm1_data_vols" {
+count = length(var.data_volumes)
+name = "vm1-data-disk${count.index}-${random_id.unique_id.hex}"
+profile = var.volume_profile
+zone = var.vm1_zone
+capacity = 500
+}
+ 
+resource "ibm_is_volume" "vm2_data_vols" {
+count = length(var.data_volumes)
+name = "vm2-data-disk${count.index}-${random_id.unique_id.hex}"
+profile = var.volume_profile
+zone = var.vm2_zone
+capacity = 500
+}
+ 
+resource "ibm_is_instance_volume_attachment" "vm1_data_vol_atts" {
+instance = ibm_is_instance.cvo_vm1.id
+count = length(var.data_volumes)
+name = "vm1-data-disk-att${count.index}-${random_id.unique_id.hex}"
+volume = ibm_is_volume.vm1_data_vols[count.index].id
+ 
+delete_volume_on_attachment_delete = false
+delete_volume_on_instance_delete = true
+}
+ 
+resource "ibm_is_instance_volume_attachment" "vm2_data_vol_atts" {
+instance = ibm_is_instance.cvo_vm2.id
+count = length(var.data_volumes)
+name = "vm2-data-disk-att${count.index}-${random_id.unique_id.hex}"
+volume = ibm_is_volume.vm2_data_vols[count.index].id
+ 
+delete_volume_on_attachment_delete = false
+delete_volume_on_instance_delete = true
+}
+ 
+/* Ouput attributes of resources created */
+output "vm1_node_mgmt_ip" {
+value = ibm_is_instance.cvo_vm1.primary_network_interface[0].primary_ipv4_address
+}
+ 
+output "vm1_instance_id" {
+value = ibm_is_instance.cvo_vm1.id
+}
+ 
+output "vm1_instance_name" {
+value = ibm_is_instance.cvo_vm1.name
+}
+ 
+output "vm2_node_mgmt_ip" {
+value = ibm_is_instance.cvo_vm2.primary_network_interface[0].primary_ipv4_address
+}
+ 
+output "vm2_instance_id" {
+value = ibm_is_instance.cvo_vm2.id
+}
+ 
+output "vm2_instance_name" {
+value = ibm_is_instance.cvo_vm2.name
+}
+ 
+output "mediator_ip" {
+value = ibm_is_instance.mediator_vm.primary_network_interface[0].primary_ipv4_address
+}
